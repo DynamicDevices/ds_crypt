@@ -1,0 +1,10 @@
+ds_crypt - de/encrypt a file using AES 256 CBC
+
+        Syntax: ds_crypt [-d] [-v] [-k key] [-s iv] [-i input_file] [-i output_file]
+        -d decrypt (otherwise encrypt)
+        -v verbose
+        -k key
+        -s initialisation vector
+        -i input file (defaults to input.txt)
+        -o output file (defaults to output.txt)
+
