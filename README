@@ -8,3 +8,9 @@ ds_crypt - de/encrypt a file using AES 256 CBC
         -i input file (defaults to input.txt)
         -o output file (defaults to output.txt)
 
+Building
+========
+
+./autogen.sh
+./configure && make
+
