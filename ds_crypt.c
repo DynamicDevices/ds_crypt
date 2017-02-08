@@ -46,9 +46,9 @@ int main(int argc, char *argv[])
 
     int output_len = 0;
 
-    bool bDecrypt = 0;
-    bool bVerbose = 0;
-    bool bShowHelp = 0;
+    bool bDecrypt = false;
+    bool bVerbose = false;
+    bool bShowHelp = false;
 
     FILE *pIn;
     FILE *pOut;
@@ -76,23 +76,23 @@ int main(int argc, char *argv[])
 		pOutputFile = strdup(optarg);
 		break;
 	case 'd' :
-		bDecrypt = 1;
+		bDecrypt = true;
 		break;
 	case 'c' :
 		printf("Cipher not implemented\r\n");
 		return -1;
 	case 'v' :
-		bVerbose = 1;
+		bVerbose = true;
 		break;
         default:
 	case '?':
-		bShowHelp = 1;
+		bShowHelp = true;
 		break;
 	}
     }
 
     if(opt_count == 0)
-	bShowHelp = 1;
+	bShowHelp = true;
 
     if(bShowHelp)
     {
