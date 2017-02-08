@@ -151,6 +151,7 @@ int main(int argc, char *argv[])
     if(!pOut)
     {
       fprintf(stderr, "Cannot open output file %s\n", pOutputFile);
+      free(pInputText);
       return -1;
     }
 
@@ -188,6 +189,10 @@ int main(int argc, char *argv[])
 
     // Close the output file
     fclose(pOut);
+
+    // Free allocated memory
+    free(pInputText);
+    free(pOutputText);
 
     /* Remove error strings */
     ERR_free_strings();
