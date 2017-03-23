@@ -20,8 +20,10 @@
 /* Key */
 
 // Generated from atmospheric noise at http://www.random.org/bytes
-static unsigned char key[] = { 0x15,0x3d,0x98,0x57,0x6f,0x80,0x52,0x85,0x73,0x9c,0x0d,0x99,0x10,0xf1,0x7f,0xc2,0x11,0x5c,0x05,0xac,0xc9,0x52,0x9f,0xa6,0x92,0x26,0x31,0x76,0x8a,0x8b,0x4d,0x84 };
-static unsigned char iv[] = { 0x53,0x12,0x77,0xeb,0x11,0xaa,0xd1,0x6d,0x1a,0x14,0x2d,0x75,0xb8,0x6e,0x56,0x03 };
+static unsigned char key[] = { 0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,
+                               0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11 };
+
+static unsigned char iv[] = { 0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11 };
 
 /* IV */
 
@@ -29,6 +31,7 @@ static unsigned char iv[] = { 0x53,0x12,0x77,0xeb,0x11,0xaa,0xd1,0x6d,0x1a,0x14,
 void handleErrors(void);
 int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key, unsigned char *iv, unsigned char *ciphertext);
 int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key, unsigned char *iv, unsigned char *plaintext);
+int unescape(char* str);
 
 // Functions
 
@@ -44,11 +47,16 @@ int main(int argc, char *argv[])
     int c;
     int opt_count = 0;
 
+    int input_len = 0;
     int output_len = 0;
+    int key_size = sizeof(key);
+    int iv_size = sizeof(iv);
 
     bool bDecrypt = false;
     bool bVerbose = false;
     bool bShowHelp = false;
+    bool bUseCmdLineText = false;
+    bool bOutputToCmdLine = true;
 
     FILE *pIn;
     FILE *pOut;
@@ -57,7 +65,7 @@ int main(int argc, char *argv[])
     ERR_load_crypto_strings();
 
     // Parse in the options
-    while( ( c = getopt( argc, argv, "k:s:i:o:dc:v?") ) != -1)
+    while( ( c = getopt( argc, argv, "k:s:i:o:dc:t:v?") ) != -1)
     {
 	opt_count++;
 
@@ -65,15 +73,26 @@ int main(int argc, char *argv[])
 	{
 	case 'k' :
 		pKey = (unsigned char *)strdup(optarg);
+                key_size = strlen((const char *)pKey);
 		break;
 	case 's' :
 		pIV = (unsigned char *)strdup(optarg);
+                iv_size = strlen((const char *)pIV);
 		break;
 	case 'i' :
 		pInputFile = strdup(optarg);
 		break;
+	case 't' :
+        {
+		char *pCopy = strdup(optarg);
+		input_len = unescape(pCopy);
+		pInputText = (unsigned char *)pCopy;
+		bUseCmdLineText = true;
+		break;
+        }
         case 'o' :
 		pOutputFile = strdup(optarg);
+                bOutputToCmdLine = false;
 		break;
 	case 'd' :
 		bDecrypt = true;
@@ -103,7 +122,8 @@ int main(int argc, char *argv[])
 	printf("-k key\n");
 	printf("-s initialisation vector\n");
 	printf("-i input file (defaults to input.txt)\n");
-	printf("-o output file (defaults to output.txt)\n");
+	printf("-t 'input text' (instead of file)\n");
+	printf("-o output file (defaults to command line)\n");
         return -1;
     }
 
@@ -118,52 +138,47 @@ int main(int argc, char *argv[])
 	printf("Output File: %s\n", pOutputFile);
 
         printf("Key is:\n");
-        BIO_dump_fp(stdout, (const char *)pKey, strlen( (const char *)pKey));
+        BIO_dump_fp(stdout, (const char *)pKey, key_size);
         printf("IV is:\n");
-        BIO_dump_fp(stdout, (const char *)pIV, strlen( (const char *)pIV));
+        BIO_dump_fp(stdout, (const char *)pIV, iv_size);
     }
 
-    pIn = fopen((const char *)pInputFile, "rb");
-    if(!pIn)
+    if(!bUseCmdLineText)
     {
-      fprintf(stderr, "Cannot open input file %s\n", pInputFile);
-      return -1;
+      pIn = fopen((const char *)pInputFile, "rb");
+      if(!pIn)
+      {
+        fprintf(stderr, "Cannot open input file %s\n", pInputFile);
+        return -1;
+      }
+
+      fseek(pIn, 0, SEEK_END); // seek to end of file
+      input_len = ftell(pIn); // get current file pointer
+      fseek(pIn, 0, SEEK_SET); // seek back to beginning of file
+
+      pInputText = malloc(input_len);
+      fread(pInputText, input_len, 1, pIn);
+      fclose(pIn);
     }
-
-    fseek(pIn, 0, SEEK_END); // seek to end of file
-    long filesize = ftell(pIn); // get current file pointer
-    fseek(pIn, 0, SEEK_SET); // seek back to beginning of file
-
-    pInputText = malloc(filesize);
-    fread(pInputText, filesize, 1, pIn);
-    fclose(pIn);
 
     // Make output buffer big enough
-    pOutputText = malloc(filesize*2);
+    pOutputText = malloc(input_len*2);
 
     if(bVerbose)
     {
         printf("Input text is:\n");
-        BIO_dump_fp(stdout, (const char *)pInputText, filesize);
-    }
-
-    pOut = fopen((const char *)pOutputFile, "wb");
-    if(!pOut)
-    {
-      fprintf(stderr, "Cannot open output file %s\n", pOutputFile);
-      free(pInputText);
-      return -1;
+        BIO_dump_fp(stdout, (const char *)pInputText, input_len);
     }
 
     if(!bDecrypt)
     {
       /* Encrypt the plaintext */
-      output_len = encrypt(pInputText, filesize, pKey, pIV, pOutputText);
+      output_len = encrypt(pInputText, input_len, pKey, pIV, pOutputText);
     }
     else
     {
       /* Decrypt the ciphertext */
-      output_len = decrypt(pInputText, filesize, pKey, pIV, pOutputText);
+      output_len = decrypt(pInputText, input_len, pKey, pIV, pOutputText);
     }
 
     if(output_len < 0)
@@ -182,13 +197,27 @@ int main(int argc, char *argv[])
         BIO_dump_fp(stdout, (const char *)pOutputText, output_len);
       }
 
-      // Write to file
-      fwrite(pOutputText, output_len, 1, pOut);
+      if(bOutputToCmdLine)
+      {
+        BIO_dump_fp(stdout, (const char *)pOutputText, output_len);
+      }
+      else
+      {
+        pOut = fopen((const char *)pOutputFile, "wb");
+        if(!pOut)
+        {
+          fprintf(stderr, "Cannot open output file %s\n", pOutputFile);
+          free(pInputText);
+          return -1;
+        }
 
+        // Write to file
+        fwrite(pOutputText, output_len, 1, pOut);
+
+        // Close the output file
+        fclose(pOut);
+      }
     }
-
-    // Close the output file
-    fclose(pOut);
 
     // Free allocated memory
     free(pInputText);
@@ -298,3 +327,56 @@ int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key, u
         return -1;
     }
 }
+
+// Unescapes 'str' in place, collapsing it back on itself, and
+// returns the resulting length of the collapsed buffer.  Handles
+// mid-buffer nul characters (0x00).  You can easily add your own
+// special escape sequences if you wish.  Just be sure that no escape
+// sequence translates into more characters than it takes to encode
+// the escape sequence itself in the original string.
+int unescape(char* str)
+{
+    char *out, *in;
+    int len=0;
+    in = out = str; // both start at the same place
+    while(*in)
+    {
+        char c = *in++;
+        if (c != '\\')
+            *out++ = c; // regular, unescaped character
+        else
+        {                   // escaped character; process it...
+            c = *in++;
+            if      (c == '0') *out++ = '\0';
+            else if (c == 'a') *out++ = '\a';
+            else if (c == 'b') *out++ = '\b';
+            else if (c == 'f') *out++ = '\f';
+            else if (c == 'n') *out++ = '\n';
+            else if (c == 'r') *out++ = '\r';
+            else if (c == 't') *out++ = '\t';
+            else if (c == 'v') *out++ = '\v';
+            else if (c == 'x'  // arbitrary hexadecimal value
+                    && isxdigit(in[0]) && isxdigit(in[1]))
+            {
+                char x[3];
+                x[0] = *in++;
+                x[1] = *in++;
+                x[3] = '\0';
+                *out++ = strtol(x, NULL, 16);
+            }
+            else if (c>='0' && c<='3' // arbitrary octal value
+                    && in[0]>='0' && in[0]<='7'
+                    && in[1]>='0' && in[1]<='7')
+            {
+                *out++ = (c-'0')*64 + (in[0]-'0')*8 + (in[1]-'0');
+                in += 2;
+            }
+            else // any other char following '\' is just itself.
+                *out++ = *in++;
+        }
+        ++len; // each time through the loop adds one character
+    }
+    *out = '\0';
+    return len;
+}
+
