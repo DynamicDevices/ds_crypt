@@ -53,6 +53,7 @@ int main(int argc, char *argv[])
     bool bShowHelp = false;
     bool bUseCmdLineText = false;
     bool bOutputToCmdLine = true;
+    bool bBareOutput = false;
 
     FILE *pIn;
     FILE *pOut;
@@ -61,7 +62,7 @@ int main(int argc, char *argv[])
     ERR_load_crypto_strings();
 
     // Parse in the options
-    while( ( c = getopt( argc, argv, "k:s:i:o:dc:t:v?") ) != -1)
+    while( ( c = getopt( argc, argv, "k:s:i:o:dc:t:bv?") ) != -1)
     {
 	opt_count++;
 
@@ -96,6 +97,9 @@ int main(int argc, char *argv[])
 	case 'c' :
 		printf("Cipher not implemented\r\n");
 		return -1;
+	case 'b' :
+		bBareOutput = true;
+		break;
 	case 'v' :
 		bVerbose = true;
 		break;
@@ -115,8 +119,10 @@ int main(int argc, char *argv[])
 	printf("Syntax: ds_crypt [-d] [-v] [-k key] [-s iv] [-i input_file] [-i output_file]\n");
 	printf("-d decrypt (otherwise encrypt)\n");
 	printf("-v verbose\n");
+	printf("-b bare output mode (hex bytes only)\n");
 	printf("-k key\n");
 	printf("-s initialisation vector\n");
+	printf("-t \"input text\" (can be null terminated with \\0)\n");
 	printf("-i input file (defaults to input.txt)\n");
 	printf("-t 'input text' (instead of file)\n");
 	printf("-o output file (defaults to command line)\n");
@@ -195,7 +201,16 @@ int main(int argc, char *argv[])
 
       if(bOutputToCmdLine)
       {
-        BIO_dump_fp(stdout, (const char *)pOutputText, output_len);
+	if(bBareOutput)
+	{
+	  for(int i = 0; i < output_len;i++)
+	    printf("%02X", pOutputText[i]);
+          printf("\n");
+	}
+	else
+	{
+          BIO_dump_fp(stdout, (const char *)pOutputText, output_len);
+	}
       }
       else
       {
