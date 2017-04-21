@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_INIT([ds_crypt], [0.1])
+AC_INIT([ds_crypt], [1.0])
 AC_CONFIG_SRCDIR([ds_crypt.c])
 AC_CONFIG_HEADER([ds_crypt.h])
 AM_INIT_AUTOMAKE
